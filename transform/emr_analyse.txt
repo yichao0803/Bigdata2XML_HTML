@@ -1,0 +1,6 @@
+﻿# EMR_ANALYSE (标准字段, 待转化字段(字段没有为空串), 字段名称)
+('NAME','NAME','')
+('VALUES_NAME','VALUES_NAME','')
+('VALUESA','VALUESA','')
+('SAS_NAME','SAS_NAME','')
+('TYPE','TYPE','')
