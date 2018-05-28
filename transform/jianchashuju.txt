@@ -1,8 +1,0 @@
-# 检查数据转化表 (标准字段, 待转化字段(字段没有为空串), 字段名称)
-('APPLY_DEPT_NAME', '', '送检科室名称')
-('EXAM_CLASS_NAME', 'EXAM_CLASS', '检查类别名称')
-('EXAM_ITEM_NAME', 'EXAM_SUB_CLASS', '检查项目名称')
-('EXAM_FEATURE', 'REPORT_TEXT_1', '检查所见')
-('EXAM_DIAG', 'REPORT_TEXT_2', '检查结论')
-('REPORT_TIME', 'REPORT_DATE_TIME', '检查时间')
-('MR_TYPE', '', '就诊类型')
