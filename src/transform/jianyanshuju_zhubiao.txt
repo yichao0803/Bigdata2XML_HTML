@@ -1,0 +1,7 @@
+# 检验主表转化表 (标准字段, 待转化字段(字段没有为空串), 字段名称)
+('REPORT_NO', 'LAB_APPLY_NO', '报告号')
+('STAY_DEPT_NAME', '', '所在科室名称')
+('LAB_ITEM_NAME', 'PARITEMNAME', '检验项目名称')
+('SPECIMAN_TYPE_NAME', 'SPECIMEN', '标本类型')
+('SAMPLE_TIME', 'REPORT_DATE_TIME', '采样时间')
+('REPORT_CONFIRM_TIME', 'REPORT_DATE_TIME', '报告审核时间')
