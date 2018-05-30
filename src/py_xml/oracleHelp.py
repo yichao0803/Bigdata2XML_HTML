@@ -2,7 +2,7 @@
 """
 Created on Wed Oct 18 13:11:17 2017
 
-@author: Administrator
+@author: Zhangyichao
 """
 import os
 import cx_Oracle
@@ -16,8 +16,29 @@ class oracleHelper:
     'Oracle 数据库操作类'
    
     #def __init__(self):
-     
-    @staticmethod 
+
+    @staticmethod
+    def fetchall(connStr, sql):
+        connection = cx_Oracle.connect(connStr);
+        cursor = connection.cursor()
+        try:
+            btime = datetime.datetime.now()
+            cursor.execute(sql)
+            etime = datetime.datetime.now()
+            d1 = etime - btime;
+            logger.debug("time:")
+            logger.debug(d1)
+            logger.debug("sql")
+            logger.debug(sql)
+            return cursor.fetchall()
+        except BaseException, Argument:
+            logger.error(Argument)
+            logger.error(sql)
+        finally:
+            cursor.close()
+            connection.close()
+    @staticmethod
+
     def fetchall(connStr,sql,*arg):
         connection = cx_Oracle.connect(connStr);
         cursor=connection.cursor()

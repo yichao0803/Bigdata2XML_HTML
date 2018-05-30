@@ -1,4 +1,9 @@
-#coding=utf-8
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 10 22:48:07 2017
+
+@author: Zhangyichao
+"""
 import logging
 import logging.handlers  
 logDir=r"C:\logs"  
