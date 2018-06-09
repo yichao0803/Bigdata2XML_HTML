@@ -148,6 +148,7 @@ class ldr2HbaseInterface:
         return " "
 
     def comment(self, _fileName, _tffile, _tableName, _timefild):
+        ignoret=["诊断类型名称"]
         _sql = "select t.PATIENT_ID,t.VISIT_ID"
         _columns = [];
         _columns.append("PATIENT_ID");
@@ -160,7 +161,10 @@ class ldr2HbaseInterface:
                 if tup[1] == "":
                     _sql += (",'' as " + tup[0])
                 else:
-                    _sql += (",t." + tup[1] + " as " + tup[0])
+                    if(tup[2] in ignoret):
+                        _sql += ("," + tup[1] + " as " + tup[0])
+                    else:
+                        _sql += (",t." + tup[1] + " as " + tup[0])
                 _columns.append(tup[0]);
 
             line = f.readline()
@@ -368,9 +372,20 @@ class ldr2HbaseInterface:
             line = f.readline()
 
         if self.isProduction:
-            _sql += " from pat_visit@toJHEMR v inner join pat_master_index@toJHEMR m on m.patient_id=v.patient_id inner join dqmc_pat_visit pv on pv.patient_id=v.patient_id and pv.visit_id=v.visit_id and v.patient_id='" + self.patient_id + "' and v.visit_id='" + self.visit_id + "'"
+            _sql +=""" from pat_visit@toJHEMR v 
+            inner join pat_master_index@toJHEMR m on m.patient_id=v.patient_id 
+            inner join dqmc_pat_visit pv on pv.patient_id=v.patient_id and pv.visit_id=v.visit_id and v.patient_id='""" + self.patient_id + """' and v.visit_id='""" + self.visit_id + """'
+            left join DEPT_DICT@toJHEMR d on d.dept_code=v.DEPT_ADMISSION_TO
+            left join DEPT_DICT@toJHEMR d1 on d1.dept_code=v.DEPT_DISCHARGE_FROM            
+            """
         else:
-            _sql += " from pat_visit v inner join pat_master_index m on m.patient_id=v.patient_id  inner join dqmc_pat_visit pv on pv.patient_id=v.patient_id and pv.visit_id=v.visit_id and v.patient_id='" + self.patient_id + "' and v.visit_id='" + self.visit_id + "'"
+            _sql += """ from pat_visit v 
+            inner join pat_master_index m on m.patient_id=v.patient_id 
+            inner join dqmc_pat_visit pv on pv.patient_id=v.patient_id and pv.visit_id=v.visit_id and v.patient_id='""" + self.patient_id + """' and v.visit_id='""" + self.visit_id + """'
+            left join DEPT_DICT d on d.dept_code=v.DEPT_ADMISSION_TO
+            left join DEPT_DICT d1 on d1.dept_code=v.DEPT_DISCHARGE_FROM
+            """
+            #_sql += " from pat_visit v inner join pat_master_index m on m.patient_id=v.patient_id  inner join dqmc_pat_visit pv on pv.patient_id=v.patient_id and pv.visit_id=v.visit_id and v.patient_id='" + self.patient_id + "' and v.visit_id='" + self.visit_id + "'"
 
         f.close()
         rows = oracleHelper.fetchall(self._connstr, _sql)

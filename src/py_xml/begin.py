@@ -37,6 +37,7 @@ if __name__=="__main__":
         #401176 76577#1 392136
         #handlePatVisit.patVisit(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml,isProduction, '521517', '1')
         #handlePatVisit.patVisit(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml, isProduction, '438322', '2')
+        #handlePatVisit.patVisit(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml, isProduction, '535696', '1')
     except  Exception,e:
         logger.error('str(Exception):\t', str(e))
         logger.error('str(e):\t\t', str(e))

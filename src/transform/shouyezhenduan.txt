@@ -1,5 +1,5 @@
 # 首页诊断转化表 (标准字段, 待转化字段(字段没有为空串), 字段名称)
-('DIAGNOSIS_TYPE_NAME', '' , '诊断类型名称')
+('DIAGNOSIS_TYPE_NAME', "case t.diagnosis_type when '1' then '门诊诊断' when '2' then '入院诊断' when '3' then '出院诊断' when '4' then '其他诊断' when '5' then '院内感染' when '6' then '院内感染' when '7' then '损伤、中毒' when '8' then '病理诊断' when '9' then '根本死亡原因' when 'A' then '其他诊断' end" , '诊断类型名称')
 ('DIAGNOSIS_TYPE_CODE', 'DIAGNOSIS_TYPE', '诊断类型编码')
 ('DIAGNOSIS_NAME', 'DIAGNOSIS_NAME', '诊断名称')
 ('DIAGNOSIS_DESC', 'DIAGNOSIS_NAME', '诊断描述')
