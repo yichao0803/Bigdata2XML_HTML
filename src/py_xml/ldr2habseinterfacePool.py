@@ -12,7 +12,7 @@ import time
 import codecs
 import multiprocessing
 import datetime
-# import traceback
+import traceback
 
 #import logging
 #import traceback
@@ -24,7 +24,7 @@ from oracleHelp import oracleHelper
 reload(sys)
 sys.setdefaultencoding('UTF-8')
 os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'
-logger = Logger(logName='log.txt', logLevel="INFO", logger="ldr2habseinterface2.py").getlog()
+logger = Logger(logName='log.txt',logLevel="DEBUG", logger="ldr2habseinterface2.py").getlog()
 
 binganshouye = True
 binglizhenduan = True
@@ -41,17 +41,22 @@ xlaidup = True
 DQMC_INPAT_ORDER_IPM_ALL = True
 
 saveHtml4Dashuju = True
+saveHtmlHuiShang=True
 saveHtml4Ldr = False
+
 
 class ldr2HbaseInterface:
     '天坛脑血管资源库对大数据接口处理xml方法'
     # _pathRootDir="../output20171213/"
-    _pathRootDir = "../output" + time.strftime('%Y%m%d', time.localtime(time.time())) + "/"
+    _pathRootDir = "../../output/" + time.strftime('%Y%m%d', time.localtime(time.time())) + "/"
     _split = "#"
     _root = "<ArrayList>\n%s</ArrayList>\n"
     _items = " <item>\n%s  </item>\n"
     _value = "   <%s>%s</%s>\n"
-    _huishangBaseDir = "X:/"
+    _huishangBaseDir = "http://172.28.10.106/emrHtml/"
+    _huishangFtpBaseDir = ""
+    _huishangFtpUser = ""
+    _huishangFtpPassWD = ""
 
     def __init__(self, connstr, emrConnstr, patient_id, visit_id, patient_name, year,isProduction):
         self._connstr = connstr
@@ -127,6 +132,57 @@ class ldr2HbaseInterface:
         fileId1 = self.patient_id[0:i - 2]  # 文件次编号
 
         j = len(fileId1);
+        _httpUrl = ""
+        if j >= 8:
+            _httpUrl = "%s%s/%s/%s.html" % (self._huishangBaseDir, fileId, fileId1, file_name)
+        # h=0 #//需要补齐位数的大小
+        fileId1 = fileId1.zfill(8)
+        _httpUrl = "%s%s/%s/%s.html" % (self._huishangBaseDir, fileId, fileId1, file_name)
+
+        try:
+            req = urllib2.Request(_httpUrl)
+            response = urllib2.urlopen(req)
+            encoding = "utf-8"#response.headers['content-type'].split('charset=')[-1]
+            unConten = unicode(response.read(), encoding)
+            if unConten.find('<meta http-equiv="content-type" content="text/html;charset=utf-8">') < 0:
+                if unConten.find('<title></title>') > 0:
+                    unConten = unConten.replace('<title></title>',
+                                                '<title></title>\n<meta http-equiv="content-type" content="text/html;charset=utf-8">')
+                elif unConten.find(u'<title>首都医科大学附属北京天坛医院</title>') > 0:
+                    unConten = unConten.replace(u'<title>首都医科大学附属北京天坛医院</title>',
+                                                u'<title>首都医科大学附属北京天坛医院</title>\n<meta http-equiv="content-type" content="text/html;charset=utf-8">')
+            if unConten.find(self.patient_id) > 0:
+                unConten = unConten.replace(self.patient_id, "".rjust(i, "*"))
+            if unConten.find(self.patient_name) > 0:
+                unConten = unConten.replace(self.patient_name, "".rjust(len(self.patient_name.decode('utf-8')), "*"))
+
+            return unConten
+            # f = open(_tffile)  # 返回一个文件对象
+            # line = f.readline()
+            # html = ""
+            # while line:
+            #     line = line.replace(self.patient_id, "".rjust(i, "*"))
+            #     html += line.replace(self.patient_name, "".rjust(len(self.patient_name.decode('utf-8')), "*"))
+            #     line = f.readline()
+            #return html
+        except IOError as info:
+            logger.error(u"%s#%s#%s" % (self.patient_id, self.visit_id, self.patient_name))
+            logger.error(u"info: %s" % info)
+            logger.error(u"traceback: %s" % traceback.print_exc())
+            logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+            logger.error(u"_tffile: %s" % _httpUrl)
+            logger.error(u'########################################################')
+            logger.error(u'\n########################################################')
+
+        return " "
+
+
+    def getHuiShang4Http(self,file_name):
+        i = len(self.patient_id)  # 获取病案号的长度
+        fileId = self.patient_id[-2:]  # 文件编号
+        fileId1 = self.patient_id[0:i - 2]  # 文件次编号
+
+        j = len(fileId1);
         _tffile = ""
         if j >= 8:
             _tffile = "%s%s/%s/%s.html" % (self._huishangBaseDir, fileId, fileId1, file_name)
@@ -143,9 +199,17 @@ class ldr2HbaseInterface:
                 html += line.replace(self.patient_name, "".rjust(len(self.patient_name.decode('utf-8')), "*"))
                 line = f.readline()
             return html
-        except BaseException:
-            logger.error(_tffile)
+        except IOError as info:
+            logger.error(u"%s#%s#%s" % (self.patient_id, self.visit_id, self.patient_name))
+            logger.error(u"info: %s" % info)
+            logger.error(u"traceback: %s" % traceback.print_exc())
+            logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+            logger.error(u"_tffile: %s" % _tffile)
+            logger.error(u'########################################################')
+            logger.error(u'\n########################################################')
+
         return " "
+
 
     def comment(self, _fileName, _tffile, _tableName, _timefild):
         ignoret=["诊断类型名称"]
@@ -329,11 +393,14 @@ class ldr2HbaseInterface:
                 items += self._items % (values)
             items = self._root % (items)
             self.saveXmlFile(_fileName, items)
-        except  Exception, e:
-            logger.error('str(Exception):' + str(Exception))
-            logger.error('str(e):' + str(e))
-            logger.error('repr(e):' + repr(e))
-            logger.error('e.message:' + e.message)
+        except IOError as info:
+            logger.error(u"%s#%s#%s" % (self.patient_id, self.visit_id, self.patient_name))
+            logger.error(u"info: %s" % info)
+            logger.error(u"traceback: %s" % traceback.print_exc())
+            logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+            logger.error(u"_tffile: %s" % _tffile)
+            logger.error(u'########################################################')
+            logger.error(u'\n########################################################')
 
     def shouYe(self, _fileName, _tffile):
         # connection = cx_Oracle.connect(self.emrConnstr)
@@ -552,11 +619,23 @@ class ldr2HbaseInterface:
 
     def toHtmlfile(self, connstrEmr, htmlUrlBase):
         sqlList = "SELECT PATIENT_ID, VISIT_ID, FILE_NO, FILE_NAME, TOPIC,LAST_MODIFY_DATE_TIME,MR_CODE FROM MR_FILE_INDEX I "
-        sqlList += "WHERE VISIT_ID = '" + self.visit_id + "' AND PATIENT_ID = '" + self.patient_id + "' AND regexp_like(i.MR_CODE,'AB030303|AB030302|AB030301|AB030305|AB030306|AB03031001|AB03031002|AB03030902|AP9901|AP9902|AP9904|AP9906|AP9908|AL03030102|AL03030101|AL9904') ORDER BY I.CREATE_DATE_TIME  "
+        sqlList += "WHERE VISIT_ID = '" + self.visit_id + "' AND PATIENT_ID = '" + self.patient_id + \
+                   "' AND regexp_like(i.MR_CODE,'AB03030101|AB03030102|AB03030201|AB030303|AB03030302|AB03030402|AB03030502|AB03030602|AB03030702|AB03031102|AB03031101|AB03031002|AB03031001|AB03030902|AB03030901|AB03030804|AB03030802|AB03030801|AP9902|AP9901|AP03030107|AP03030106|AP03030105|AP03030104|AP03030103|AL9904|AL03030101|AP9908|AP9906|AP9904|AD9940|AC9902|AC03030102|AC030301|AB9916|AB9914|AB03031202|AB03031201|AB03030701|AB03030601|AB03030501|AB03030401|AB03030301|AB03030202')" \
+                   " AND (TOPIC LIKE '%脑血管住院病历' OR TOPIC LIKE '%脑血管病住院病历' OR TOPIC LIKE '%会商记录' OR TOPIC LIKE '%其他药物治疗' OR TOPIC LIKE '%非药物治疗' OR TOPIC LIKE '%住院期间血管事件及并发症' OR TOPIC LIKE '%出院时情况' OR TOPIC LIKE '%医疗质量评估')" \
+                   " ORDER BY I.CREATE_DATE_TIME  "
         # +"'AND (TOPIC LIKE '%脑血管住院病历' OR TOPIC LIKE '%脑血管病住院病历' OR TOPIC LIKE '%会商记录' OR TOPIC LIKE '%其他药物治疗' OR TOPIC LIKE '%非药物治疗' OR TOPIC LIKE '%住院期间血管事件及并发症' OR TOPIC LIKE '%出院时情况' OR TOPIC LIKE '%医疗质量评估')  ORDER BY I.CREATE_DATE_TIME "
         rows = oracleHelper.fetchall(connstrEmr, sqlList)
-        for i, row in pd.DataFrame(rows, columns=["PATIENT_ID", "VISIT_ID", "FILE_NO", "FILE_NAME", "TOPIC",
-                                                  "LAST_MODIFY_DATE_TIME", "MR_CODE"]).iterrows():
+        rowsDataFrame=pd.DataFrame(rows, columns=["PATIENT_ID", "VISIT_ID", "FILE_NO", "FILE_NAME", "TOPIC",
+                                    "LAST_MODIFY_DATE_TIME", "MR_CODE"])
+        if rowsDataFrame.iloc[:,0].size==0:
+            logger.warning(u"该患者无病历数据：%s#%s#%s" % (self.patient_id, self.visit_id, self.patient_name))
+            logger.warning(u"sql: %s" % sqlList)
+        else:
+            logger.debug(u"该患者有%d份病历：%s#%s#%s" % (rowsDataFrame.iloc[:,0].size,self.patient_id, self.visit_id, self.patient_name))
+
+        for i, row in rowsDataFrame.iterrows():
+            logger.debug(u"正在处理第%d份病历，共%d份病历：%s#%s#%s" % (i+1,
+            rowsDataFrame.iloc[:, 0].size, self.patient_id, self.visit_id, self.patient_name))
             htmlUrl = htmlUrlBase + "?patient_id=" + Utility.toStr(row["PATIENT_ID"]) + "&visit_id="
             htmlUrl += Utility.toStr(row["VISIT_ID"]) + "&file_no="
             htmlUrl += Utility.toStr(row["FILE_NO"]) + "&file_name=" + Utility.toStr(
@@ -564,15 +643,16 @@ class ldr2HbaseInterface:
                 self.patient_name)
             try:
                 if Utility.toStr(row["TOPIC"]).find("会商") > 0:
-                    html = self.getHuiShang(Utility.toStr(row["FILE_NAME"]))
-                    if saveHtml4Dashuju:
-                        self.saveHtmlFile(Utility.toStr(row["TOPIC"]), Utility.toStr(row["MR_CODE"]),
-                                          Utility.toStr(row["FILE_NAME"]), Utility.toStr(row["LAST_MODIFY_DATE_TIME"]),
-                                          html)
-                    if saveHtml4Ldr:
-                        self.saveHtmlFile4Ldr(Utility.toStr(row["TOPIC"]), Utility.toStr(row["MR_CODE"]),
-                                              Utility.toStr(row["FILE_NAME"]),
-                                              Utility.toStr(row["LAST_MODIFY_DATE_TIME"]), html)
+                    if(saveHtmlHuiShang):
+                        html = self.getHuiShang(Utility.toStr(row["FILE_NAME"]))
+                        if saveHtml4Dashuju:
+                            self.saveHtmlFile(Utility.toStr(row["TOPIC"]), Utility.toStr(row["MR_CODE"]),
+                                              Utility.toStr(row["FILE_NAME"]), Utility.toStr(row["LAST_MODIFY_DATE_TIME"]),
+                                              html)
+                        if saveHtml4Ldr:
+                            self.saveHtmlFile4Ldr(Utility.toStr(row["TOPIC"]), Utility.toStr(row["MR_CODE"]),
+                                                  Utility.toStr(row["FILE_NAME"]),
+                                                  Utility.toStr(row["LAST_MODIFY_DATE_TIME"]), html)
                 else:
                     html = self.getHttp(htmlUrl)
                     if saveHtml4Dashuju:
@@ -583,10 +663,18 @@ class ldr2HbaseInterface:
                         self.saveHtmlFile4Ldr(Utility.toStr(row["TOPIC"]), Utility.toStr(row["MR_CODE"]),
                                               Utility.toStr(row["FILE_NAME"]),
                                               Utility.toStr(row["LAST_MODIFY_DATE_TIME"]), html)
-            except Exception as E:
-                # raise TypeError('bad input') from E
-                # logger.error(htmlUrl)
-                logger.error(E)
+            except IOError as info:
+                logger.error(u"%s#%s#%s" % (self.patient_id, self.visit_id, self.patient_name))
+                logger.error(u"info: %s" % info)
+                logger.error(u"traceback: %s" % traceback.print_exc())
+                logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+                logger.error(u'########################################################')
+                logger.error(u'\n########################################################')
+            logger.debug(u"处理完成%d份病历，共%d份病历：%s#%s#%s" % (i + 1,
+                                                  rowsDataFrame.iloc[:, 0].size, self.patient_id, self.visit_id,
+                                                  self.patient_name))
+            logger.debug(u"处理完成该患者%d共份病历：%s#%s#%s" % (
+            rowsDataFrame.iloc[:, 0].size, self.patient_id, self.visit_id, self.patient_name))
 
     def getGanJueZZ(self,t_rows):
         dict ={u'肌力下降':u'肌力下降',u'失语':u'是',u'构音障碍':u'是',u'痫性发作':u'是',u'单眼盲或视物不清':u'是',
@@ -696,42 +784,36 @@ left join dqmc_pat_master m on T.PATIENT_ID=M.PATIENT_ID where t.patient_id='"""
         for i, row in pd.DataFrame(rows, columns=["patient_id", "visit_id", "PATIENT_NAME"]).iterrows():
             lhi = ldr2HbaseInterface(connstr, emrConnstr, Utility.toStr(row["patient_id"]),
                                      Utility.toStr(row["visit_id"])
-                                     , Utility.toStr(row["PATIENT_NAME"]), "Test", isProduction)
+                                     , Utility.toStr(row["PATIENT_NAME"]), "testMultiProc", isProduction)
             if isSaveXml:
                 try:
                     lhi.toXmlfile(emrConnstr)
-                except Exception, e:
-                    logger.error(
-                        Utility.toStr(row["patient_id"]) + "#" + Utility.toStr(row["visit_id"]) + "#" + Utility.toStr(
-                            row["PATIENT_NAME"]))
-                    logger.exception(e)
-                    logger.error('str(Exception):' + str(Exception))
-                    logger.error('str(e):' + str(e))
-                    logger.error('repr(e):' + repr(e))
-                    logger.error('e.message:' + e.message)
-                    logger.error('########################################################')
-                    logger.error('########################################################')
+                except IOError as info:
+                    logger.error(u"%s#%s#%s" % (Utility.toStr(row["patient_id"]), Utility.toStr(row["visit_id"]),Utility.toStr(row["PATIENT_NAME"])))
+                    logger.error(u"info: %s" % info)
+                    logger.error(u"traceback: %s" % traceback.print_exc())
+                    logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+                    logger.error(u'########################################################')
+                    logger.error(u'\n########################################################')
             if isSaveHtml:
                 try:
                     lhi.toHtmlfile(emrConnstr, htmlUrlBase)
-                except Exception, e:
-                    logger.error(
-                        Utility.toStr(row["patient_id"]) + "#" + Utility.toStr(row["visit_id"]) + "#" + Utility.toStr(
-                            row["PATIENT_NAME"]))
-                    logger.error('str(Exception):' + str(Exception))
-                    logger.error('str(e):' + str(e))
-                    logger.error('repr(e):' + repr(e))
-                    logger.error('e.message:' + e.message)
-                    logger.error('########################################################')
-                    logger.error('########################################################')
+                except IOError as info:
+                    logger.error(u"%s#%s#%s" % (Utility.toStr(row["patient_id"]), Utility.toStr(row["visit_id"]),
+                                                Utility.toStr(row["PATIENT_NAME"])))
+                    logger.error(u"info: %s" % info)
+                    logger.error(u"traceback: %s" % traceback.print_exc())
+                    logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+                    logger.error(u'########################################################')
+                    logger.error(u'\n########################################################')
 
     @staticmethod
     def patVisit4Time(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml, isProduction, processescount):
-        dBegin = datetime.datetime.strptime("2017-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
-        dEnd = datetime.datetime.strptime("2017-09-30 23:59:59", "%Y-%m-%d %H:%M:%S")
-        pool = multiprocessing.Pool(processes=processescount)
-        for k in range(0, (dEnd.year - dBegin.year) + 1):
+        dBegin = datetime.datetime.strptime("2009-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
+        dEnd = datetime.datetime.strptime("2017-12-31 23:59:59", "%Y-%m-%d %H:%M:%S")
 
+        for k in range(0, (dEnd.year - dBegin.year) + 1):
+            pool = multiprocessing.Pool(processes=processescount)
             d1 = datetime.datetime.strptime(str(dBegin.year + k) + "-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
             d2 = datetime.datetime.strptime(str(dBegin.year + k) + "-12-31 23:23:59", "%Y-%m-%d %H:%M:%S")
             if dBegin.year - d1.year == 0:
@@ -743,9 +825,10 @@ left join dqmc_pat_master m on T.PATIENT_ID=M.PATIENT_ID where t.patient_id='"""
             sql = "select t.patient_id,t.visit_id,M.PATIENT_NAME from dqmc_pat_visit t left join dqmc_pat_master m on T.PATIENT_ID=M.PATIENT_ID where t.register_date between  to_date('"
             sql += d1.strftime("%Y-%m-%d %H:%M:%S") + "','yyyy-mm-dd hh24:mi:ss') and  to_date('" + d2.strftime(
                 "%Y-%m-%d %H:%M:%S") + "','yyyy-mm-dd hh24:mi:ss') order by t.admission_date_time desc"
-            logger.info(sql)
+            logger.info(u"sql：%s" % sql)
             rows = oracleHelper.fetchall(connstr, sql)
             dataR = pd.DataFrame(rows, columns=["patient_id", "visit_id", "PATIENT_NAME"])
+            logger.info(u"由 %s 至 %s 执行开始执行" % (d1.strftime("%Y-%m-%d %H:%M:%S"), d2.strftime("%Y-%m-%d %H:%M:%S")))
             for i, row in dataR.iterrows():
                 if isSaveXml:
                     pool.apply_async(patVisit4Time2Xml, (connstr, emrConnstr,
@@ -758,34 +841,35 @@ left join dqmc_pat_master m on T.PATIENT_ID=M.PATIENT_ID where t.patient_id='"""
                         connstr, emrConnstr, htmlUrlBase, Utility.toStr(row["patient_id"]),
                         Utility.toStr(row["visit_id"]),
                         Utility.toStr(row["PATIENT_NAME"]), Utility.toStr(dBegin.year + k), isProduction))
-        pool.close()
-        pool.join()  # 调用join之前，先调用close函数，否则会出错。执行完close后不会有新的进程加入到pool,join函数等待所有子进程结束
+                logger.debug(u"[%d/%d]" % (i,dataR.iloc[:,0].size));
+            pool.close()
+            pool.join()  # 调用join之前，先调用close函数，否则会出错。执行完close后不会有新的进程加入到pool,join函数等待所有子进程结束
+            #print("由 %s 至 %s 执行完成" %(d1.strftime("%Y-%m-%d %H:%M:%S"),d2.strftime("%Y-%m-%d %H:%M:%S")))
+            logger.info(u"由 %s 至 %s 执行完成" %(d1.strftime("%Y-%m-%d %H:%M:%S"),d2.strftime("%Y-%m-%d %H:%M:%S")))
 
 
 def patVisit4Time2Xml(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years, isProduction):
-    # logger.info(patient_id+"#"+visit_id)
     try:
         lhi = ldr2HbaseInterface(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years, isProduction)
         lhi.toXmlfile(emrConnstr)
-    except Exception, e:
-        logger.error(patient_id + "#" + visit_id + "#" + PATIENT_NAME)
-        logger.error('str(Exception):' + str(Exception))
-        logger.error('str(e):' + str(e))
-        logger.error('repr(e):' + repr(e))
-        logger.error('e.message:' + e.message)
-        logger.error('########################################################')
-        logger.error('\n########################################################')
+    except IOError as info:
+        logger.error(u"%s#%s#%s" % (patient_id ,visit_id ,PATIENT_NAME))
+        logger.error(u"info: %s" % info)
+        logger.error(u"traceback: %s" % traceback.print_exc())
+        logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+        logger.error(u'########################################################')
+        logger.error(u'\n########################################################')
 
 
 def patVisit4Time2Html(connstr, emrConnstr, htmlUrlBase, patient_id, visit_id, PATIENT_NAME, years, isProduction):
     try:
+        time.sleep(0)
         lhi = ldr2HbaseInterface(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years, isProduction)
         lhi.toHtmlfile(emrConnstr, htmlUrlBase)
-    except Exception, e:
-        logger.error(patient_id + "#" + visit_id + "#" + PATIENT_NAME)
-        logger.error('str(Exception):' + str(Exception))
-        logger.error('str(e):' + str(e))
-        logger.error('repr(e):' + repr(e))
-        logger.error('e.message:' + e.message)
-        logger.error('########################################################')
-        logger.error('\n########################################################')
+    except IOError as info:
+        logger.error(u"%s#%s#%s" % (patient_id, visit_id, PATIENT_NAME))
+        logger.error(u"info: %s" % info)
+        logger.error(u"traceback: %s" % traceback.print_exc())
+        logger.error(u'traceback.format_exc():\n%s' % traceback.format_exc())
+        logger.error(u'########################################################')
+        logger.error(u'\n########################################################')

@@ -10,13 +10,10 @@ from log import Logger
 import datetime
 
 os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'
-logger = Logger(logName='oracleHelper.log', logLevel="INFO", logger="oracleHelper.py").getlog()
+logger = Logger(logName='oracleHelper.log',logLevel="DEBUG", logger="oracleHelper.py").getlog()
 
 class oracleHelper:
     'Oracle 数据库操作类'
-   
-    #def __init__(self):
-
     @staticmethod
     def fetchall(connStr, sql):
         connection = cx_Oracle.connect(connStr);
@@ -32,8 +29,8 @@ class oracleHelper:
             logger.debug(sql)
             return cursor.fetchall()
         except BaseException, Argument:
-            logger.error(Argument)
-            logger.error(sql)
+            logger.error(u"Argument:%s" % Argument)
+            logger.error(u"sql: %s" % sql)
         finally:
             cursor.close()
             connection.close()
@@ -53,8 +50,8 @@ class oracleHelper:
             logger.debug(sql)
             return cursor.fetchall()
         except BaseException,Argument:
-            logger.error(Argument)            
-            logger.error(sql) 
+            logger.error(u"Argument:%s" % Argument)
+            logger.error(u"sql: %s" % sql)
         finally:
             cursor.close()
             connection.close()
@@ -73,8 +70,8 @@ class oracleHelper:
             logger.debug(sql)
             return cursor.fetchall()
         except BaseException,Argument:
-            logger.error(Argument)            
-            logger.error(sql) 
+            logger.error(u"Argument:%s" % Argument)
+            logger.error(u"sql: %s" % sql)
         finally:
             cursor.close()
             connection.close()
