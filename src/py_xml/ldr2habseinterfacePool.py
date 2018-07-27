@@ -58,7 +58,7 @@ class ldr2HbaseInterface:
     _huishangFtpUser = ""
     _huishangFtpPassWD = ""
 
-    def __init__(self, connstr, emrConnstr, patient_id, visit_id, patient_name, year,isProduction):
+    def __init__(self, connstr, emrConnstr, patient_id, visit_id, patient_name, year,isSaveXml,isSaveHtml,isProduction):
         self._connstr = connstr
         self.emrConnstr = emrConnstr
         self.patient_id = patient_id
@@ -71,9 +71,9 @@ class ldr2HbaseInterface:
         self._pathHtmlDir = self._pathRootDir + "html/" + self.year + "/"
         self._pathHtml4LdrDir = self._pathRootDir + "html4ldr/"
 
-        if (not os.path.exists(self._pathXmlDir)):
+        if (isSaveXml and (not os.path.exists(self._pathXmlDir))):
             os.makedirs(self._pathXmlDir)
-        if (not os.path.exists(self._pathHtmlDir)):
+        if (isSaveHtml and (not os.path.exists(self._pathHtmlDir))):
             os.makedirs(self._pathHtmlDir)
 
     def saveXmlFile(self, fileName, xml):
@@ -784,7 +784,7 @@ left join dqmc_pat_master m on T.PATIENT_ID=M.PATIENT_ID where t.patient_id='"""
         for i, row in pd.DataFrame(rows, columns=["patient_id", "visit_id", "PATIENT_NAME"]).iterrows():
             lhi = ldr2HbaseInterface(connstr, emrConnstr, Utility.toStr(row["patient_id"]),
                                      Utility.toStr(row["visit_id"])
-                                     , Utility.toStr(row["PATIENT_NAME"]), "testMultiProc", isProduction)
+                                     , Utility.toStr(row["PATIENT_NAME"]), "testMultiProc",isSaveXml,isSaveHtml,isProduction)
             if isSaveXml:
                 try:
                     lhi.toXmlfile(emrConnstr)
@@ -809,8 +809,8 @@ left join dqmc_pat_master m on T.PATIENT_ID=M.PATIENT_ID where t.patient_id='"""
 
     @staticmethod
     def patVisit4Time(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml, isProduction, processescount):
-        dBegin = datetime.datetime.strptime("2009-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
-        dEnd = datetime.datetime.strptime("2017-12-31 23:59:59", "%Y-%m-%d %H:%M:%S")
+        dBegin = datetime.datetime.strptime("2018-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
+        dEnd = datetime.datetime.strptime("2018-03-31 23:59:59", "%Y-%m-%d %H:%M:%S")
 
         for k in range(0, (dEnd.year - dBegin.year) + 1):
             pool = multiprocessing.Pool(processes=processescount)
@@ -835,22 +835,21 @@ left join dqmc_pat_master m on T.PATIENT_ID=M.PATIENT_ID where t.patient_id='"""
                                                          Utility.toStr(row["patient_id"]),
                                                          Utility.toStr(row["visit_id"]),
                                                          Utility.toStr(row["PATIENT_NAME"]),
-                                                         Utility.toStr(dBegin.year + k), isProduction))
+                                                         Utility.toStr(dBegin.year + k),isSaveXml,isSaveHtml, isProduction))
                 if isSaveHtml:
                     pool.apply_async(patVisit4Time2Html, (
                         connstr, emrConnstr, htmlUrlBase, Utility.toStr(row["patient_id"]),
                         Utility.toStr(row["visit_id"]),
-                        Utility.toStr(row["PATIENT_NAME"]), Utility.toStr(dBegin.year + k), isProduction))
+                        Utility.toStr(row["PATIENT_NAME"]), Utility.toStr(dBegin.year + k),isSaveXml,isSaveHtml, isProduction))
                 logger.debug(u"[%d/%d]" % (i,dataR.iloc[:,0].size));
             pool.close()
             pool.join()  # 调用join之前，先调用close函数，否则会出错。执行完close后不会有新的进程加入到pool,join函数等待所有子进程结束
-            #print("由 %s 至 %s 执行完成" %(d1.strftime("%Y-%m-%d %H:%M:%S"),d2.strftime("%Y-%m-%d %H:%M:%S")))
             logger.info(u"由 %s 至 %s 执行完成" %(d1.strftime("%Y-%m-%d %H:%M:%S"),d2.strftime("%Y-%m-%d %H:%M:%S")))
 
 
-def patVisit4Time2Xml(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years, isProduction):
+def patVisit4Time2Xml(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years,isSaveXml,isSaveHtml, isProduction):
     try:
-        lhi = ldr2HbaseInterface(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years, isProduction)
+        lhi = ldr2HbaseInterface(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years,isSaveXml,isSaveHtml, isProduction)
         lhi.toXmlfile(emrConnstr)
     except IOError as info:
         logger.error(u"%s#%s#%s" % (patient_id ,visit_id ,PATIENT_NAME))
@@ -861,10 +860,10 @@ def patVisit4Time2Xml(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, y
         logger.error(u'\n########################################################')
 
 
-def patVisit4Time2Html(connstr, emrConnstr, htmlUrlBase, patient_id, visit_id, PATIENT_NAME, years, isProduction):
+def patVisit4Time2Html(connstr, emrConnstr, htmlUrlBase, patient_id, visit_id, PATIENT_NAME, years,isSaveXml,isSaveHtml, isProduction):
     try:
         time.sleep(0)
-        lhi = ldr2HbaseInterface(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years, isProduction)
+        lhi = ldr2HbaseInterface(connstr, emrConnstr, patient_id, visit_id, PATIENT_NAME, years,isSaveXml,isSaveHtml,isProduction)
         lhi.toHtmlfile(emrConnstr, htmlUrlBase)
     except IOError as info:
         logger.error(u"%s#%s#%s" % (patient_id, visit_id, PATIENT_NAME))

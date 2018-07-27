@@ -7,6 +7,7 @@ Created on Wed Oct 18 13:10:40 2017
 import traceback
 from log import Logger 
 from ldr2habseinterfacePool import handlePatVisit
+from checkYearDirsCount import  checkYearDirsCount
 
 logger = Logger(logName='begin.txt',logLevel="INFO", logger="begin.py").getlog()
 
@@ -40,7 +41,7 @@ if __name__=="__main__":
         #handlePatVisit.patVisit(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml, isProduction, '535696', '1')
         #handlePatVisit.patVisit(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml, isProduction, '552702', '1')
         #handlePatVisit.patVisit(connstr, emrConnstr, htmlUrlBase, isSaveXml, isSaveHtml, isProduction, '328485', '1')
-
+        checkYearDirsCount.checks()
 
     except IOError as info:
         logger.error(u"info: %s" % info)
