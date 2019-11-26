@@ -39,7 +39,8 @@ def sentEmailOutLook(contentStr,subject):
     mail_account = "yichao0803@outlook.com"
     mail_passwd = "123abcABC!@#"
     sender_email = "yichao0803@outlook.com"
-    receiver_email = ["yichao0803@gmail.com","yichao0803@outlook.com","yichao0803@qq.com"]
+    receiver_email = ["yichao0803@gmail.com"]
+
     # subject = '资源已可以申请，请尽快填写资料'
 
     message = MIMEText('邮件正文：'+contentStr, 'plain', 'utf-8')
