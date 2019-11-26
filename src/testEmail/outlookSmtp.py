@@ -18,21 +18,20 @@ import logging
 # 系统判断
 import platform
 
-
-logFilename="/root/doc/getHttp.Log"
-if platform.system()=="Windows":
-    logFilename="getHttp.Log"
-
+logFilename = "/root/doc/getHttp.Log"
+if platform.system() == "Windows":
+    logFilename = "getHttp.Log"
 
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-handler=logging.FileHandler(logFilename,encoding='utf-8')
-formatter=logging.Formatter(LOG_FORMAT) # 实例化formatter
-handler.setFormatter(formatter)# 为handler添加formatter
-logger=logging.getLogger("testSmtp") # 获取名为testSmtp的logger
-logger.addHandler(handler) # 为logger添加handler
+handler = logging.FileHandler(logFilename, encoding='utf-8')
+formatter = logging.Formatter(LOG_FORMAT)  # 实例化formatter
+handler.setFormatter(formatter)  # 为handler添加formatter
+logger = logging.getLogger("testSmtp")  # 获取名为testSmtp的logger
+logger.addHandler(handler)  # 为logger添加handler
 logger.setLevel(logging.DEBUG)
 
-def sentEmailOutLook(contentStr,subject):
+
+def sentEmailOutLook(contentStr, subject):
     # 设置邮件服务地址及默认端口号，这里选择的是outlook邮箱
     smtp_server = "smtp.office365.com:587"
     # 设置发送来源的邮箱地址
@@ -43,7 +42,7 @@ def sentEmailOutLook(contentStr,subject):
 
     # subject = '资源已可以申请，请尽快填写资料'
 
-    message = MIMEText('邮件正文：'+contentStr, 'plain', 'utf-8')
+    message = MIMEText('邮件正文：' + contentStr, 'plain', 'utf-8')
     message['Subject'] = Header(subject, 'utf-8')
 
     server = smtplib.SMTP(smtp_server)
@@ -58,6 +57,7 @@ def sentEmailOutLook(contentStr,subject):
     server.close()
     logger.info(u"邮件发送成功")
 
+
 def httpGet(url):
     data = {}
 
@@ -68,32 +68,36 @@ def httpGet(url):
     req = urllib.request.Request(full_url)
     req.add_header("User-Agent",
                    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36")
-    with urllib.request.urlopen(req,context=context) as response:
+    with urllib.request.urlopen(req, context=context) as response:
         html = response.read()
         logger.info("response.code: " + str(response.code))
-        if response.code==200:
+        if response.code == 200:
             return html
         else:
-            logger.error("response.content: " +html)
+            logger.error("response.content: " + html)
+
 
 if __name__ == '__main__':
-    url = 'https://www.bphc.com.cn/front/noroomstaff/checkHavePlanShow'
-    urlFirst="https://www.bphc.com.cn/front/first/checkHavePlanShow"
-    content = httpGet(url)
-    contentStr = content.decode('utf-8')
+    subject = '[Flase]无资源'
+    urls = ["https://www.bphc.com.cn/front/register/checkHavePlanShow"
+            ,"https://www.bphc.com.cn/front/first/checkHavePlanShow"
+            ,"https://www.bphc.com.cn/front/sspz/checkHavePlanShow"
+            ,"https://www.bphc.com.cn/front/noroomstaff/checkHavePlanShow"
+           ]
+    contents = ["" for x in range(len(urls))]
+    results = [False for x in range(len(urls))]
+    i = 0
 
-    content=httpGet(urlFirst);
-    contentFirstStr=content.decode("utf-8")
+    for u in urls:
+        content = httpGet(u).decode("utf-8")
+        contents[i] = content;
+        results[i] = not content == '{"code":0,"msg":"操作成功","data":false}'
+        logger.debug(u'Result:' + str(results[i]))
 
+        i = i + 1
 
-    logger.debug(u"contentStr:" + repr(contentStr)+u" contentFirstStr: "+repr(contentFirstStr))
-    logger.debug(u'Result:' + str(not contentStr == '{"code":0,"msg":"操作成功","data":false}') )
-    logger.debug(u'ResultFirst:' + str(not contentFirstStr == '{"code":0,"msg":"操作成功","data":false}'))
-
-
-    if contentStr == '{"code":0,"msg":"操作成功","data":false}' and contentFirstStr == '{"code":0,"msg":"操作成功","data":false}':
-        subject = '[Flase]无资源'
-        sentEmailOutLook(contentStr+contentFirstStr,subject)
-    else:
+    if True in results:
         subject = '[True]资源已可以申请，请尽快填写资料'
-        sentEmailOutLook(contentStr+contentFirstStr,subject)
+
+    logger.debug("\n"+"\n".join(contents))
+    sentEmailOutLook("\n"+"\n".join(contents), subject)
